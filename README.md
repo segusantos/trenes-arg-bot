@@ -4,7 +4,7 @@
 
 ## Descripción
 
-TrenesArgBot te permite recibir notificaciones automáticas sobre modificaciones en el servicio y novedades de las líneas de trenes de Argentina. El bot obtiene información actualizada desde la página oficial de [Trenes Argentinos](https://www.argentina.gob.ar/transporte/trenes-argentinos/Modificaciones-en-el-servicio-y-novedades) y te notifica a los usuarios cuando hay nuevas alertas en tus líneas seleccionadas.
+TrenesArgBot te permite recibir notificaciones automáticas sobre modificaciones en el servicio y novedades de las líneas de trenes de Argentina. El bot obtiene información actualizada desde la página oficial de [Trenes Argentinos](https://www.argentina.gob.ar/transporte/trenes-argentinos/Modificaciones-en-el-servicio-y-novedades) y te notifica cuando hay nuevas alertas en tus líneas seleccionadas.
 
 ## Quick Start
 
