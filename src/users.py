@@ -23,15 +23,15 @@ def register_user(supabase: Client,
             raise e
         
 
-def get_lines(supabase: Client) -> list[dict]:
-    response = supabase.table("lines").select("id", "name").execute()
+def get_available_lines(supabase: Client, user_id: int) -> list[dict]:
+    response = (
+        supabase
+        .table("lines")
+        .select("id, name, subscriptions(user_id)")
+        .is_("subscriptions", None)
+        .execute()
+    )
     return [{"id": line["id"], "name": line["name"]} for line in response.data]
-
-
-def get_lines_to_add(supabase: Client, user_id: int) -> list[dict]:
-    lines = get_lines(supabase)
-    user_lines = get_user_lines(supabase, user_id)
-    return [line for line in lines if line not in user_lines]
 
 
 def get_user_lines(supabase: Client, user_id: int) -> list[dict]:
@@ -41,7 +41,7 @@ def get_user_lines(supabase: Client, user_id: int) -> list[dict]:
                 .eq("user_id", user_id)
                 .execute()
     )
-    return [{"id": entry["lines"]["id"], "name": entry["lines"]["name"]} for entry in response.data if entry.get("lines")]
+    return [{"id": entry["lines"]["id"], "name": entry["lines"]["name"]} for entry in response.data]
 
 
 def get_user_alerts(supabase: Client, user_id: int) -> dict[str, list[dict]]:
