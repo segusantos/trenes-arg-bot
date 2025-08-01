@@ -14,12 +14,12 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.bot.send_message(
         chat_id=update.effective_chat.id,
         text=f"<b>¡Hola {update.effective_user.first_name}!</b> "
-        "<b>Soy @TrenesArgBot, tu asistente para alertas de trenes en Argentina.</b>🚆🇦🇷\n\n"
+        "<b>Soy <a href='https://github.com/segusantos/trenes-arg-bot'>TrenesArgBot</a>, "
+        "tu asistente para alertas de trenes en Argentina.</b>🚆🇦🇷\n\n"
         "Usá /lines para listar las líneas que tenés seleccionadas y /alerts para ver tus alertas actuales. "
         "Podés agregar y eliminar líneas con /add y /remove.\n\n"
         "Cada vez que haya una novedad, te enviaré un mensaje. "
         "¡Espero ayudarte a mantenerte informado sobre el estado de los trenes!😊\n\n"
-        "Seguime en GitHub: <a href='https://github.com/segusantos/trenes-arg-bot'>TrenesArgBot</a>\n\n"
         "¡Buen viaje!🛤️",
         parse_mode="HTML"
     )
