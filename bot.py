@@ -45,7 +45,7 @@ def main() -> None:
     app.bot_data["trenes_arg_url"] = trenes_arg_url
     app.bot_data["supabase"] = supabase
 
-    app.job_queue.run_repeating(sync_alerts, interval=60, first=0)
+    app.job_queue.run_repeating(sync_alerts, interval=300, first=0)
     app.run_polling(stop_signals=())
 
 
