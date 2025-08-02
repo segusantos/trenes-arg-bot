@@ -46,8 +46,8 @@ def main() -> None:
     app.bot_data["supabase"] = supabase
 
     app.job_queue.run_repeating(sync_alerts, interval=60, first=0)
-    app.run_polling()
+    app.run_polling(stop_signals=())
 
 
-if __name__ == "__main__":    
+if __name__ == "__main__":
     main()
