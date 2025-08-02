@@ -1,5 +1,6 @@
 import os
 from dotenv import load_dotenv
+import asyncio
 import logging
 
 from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
@@ -18,6 +19,8 @@ async def sync_alerts(context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 def main() -> None:
+    asyncio.set_event_loop(asyncio.new_event_loop())
+
     logging.basicConfig(
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         level=logging.INFO
@@ -46,5 +49,5 @@ def main() -> None:
     app.run_polling()
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":    
     main()
