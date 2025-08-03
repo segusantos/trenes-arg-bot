@@ -1,15 +1,15 @@
 import logging
-from supabase import Client
+from supabase import AsyncClient
 
 
-def register_user(supabase: Client,
+async def register_user(supabase: AsyncClient,
                   user_id: int,
                   chat_id: int,
                   username: str,
                   first_name: str,
                   last_name: str) -> None:
     try:
-        supabase.table("users").insert({
+        await supabase.table("users").insert({
             "id": user_id,
             "chat_id": chat_id,
             "username": username,
@@ -23,51 +23,66 @@ def register_user(supabase: Client,
             raise e
         
 
-def get_available_lines(supabase: Client, user_id: int) -> list[dict]:
-    response = (
-        supabase
-        .table("lines")
-        .select("id, name, subscriptions(user_id)")
-        .is_("subscriptions", None)
-        .execute()
+async def get_chat_ids(supabase: AsyncClient, line_id: int) -> list[int]:
+    response = await (
+        supabase.table("subscriptions")
+                .select("users(chat_id)")
+                .eq("line_id", line_id)
+                .execute()
     )
-    return [{"id": line["id"], "name": line["name"]} for line in response.data]
+    return [
+        entry["users"]["chat_id"]
+        for entry in response.data
+    ]
 
 
-def get_user_lines(supabase: Client, user_id: int) -> list[dict]:
-    response = (
+async def get_available_lines(supabase: AsyncClient, user_id: int) -> list[dict]:
+    response = await (
+        supabase.table("lines")
+                .select("id, name, subscriptions(user_id)")
+                .is_("subscriptions", None)
+                .execute()
+    )
+    return [
+        {"id": line["id"], "name": line["name"]}
+        for line in response.data
+    ]
+
+
+async def get_user_lines(supabase: AsyncClient, user_id: int) -> list[dict]:
+    response = await (
         supabase.table("subscriptions")
                 .select("lines(id, name)")
                 .eq("user_id", user_id)
                 .execute()
     )
-    return [{"id": entry["lines"]["id"], "name": entry["lines"]["name"]} for entry in response.data]
+    return [
+        {"id": entry["lines"]["id"], "name": entry["lines"]["name"]}
+        for entry in response.data
+    ]
 
 
-def get_user_alerts(supabase: Client, user_id: int) -> dict[str, list[dict]]:
-    response = (
+async def get_user_alerts(supabase: AsyncClient, user_id: int) -> dict[str, list[dict]]:
+    response = await (
         supabase.table("subscriptions")
                 .select("lines(name, alerts(type, title, description))")
                 .eq("user_id", user_id)
                 .execute()
     )
-
     alerts_by_line = {}
     for entry in response.data:
         line = entry.get("lines")
         if not line or "name" not in line:
             continue
-
         line_name = line["name"]
         alerts = line.get("alerts", [])
         alerts_by_line[line_name] = alerts
-
     return alerts_by_line
 
 
-def add_user_line(supabase: Client, user_id: int, line_id: int) -> None:
+async def add_user_line(supabase: AsyncClient, user_id: int, line_id: int) -> None:
     try:
-        supabase.table("subscriptions").insert({
+        await supabase.table("subscriptions").insert({
             "user_id": user_id,
             "line_id": line_id
         }).execute()
@@ -78,9 +93,9 @@ def add_user_line(supabase: Client, user_id: int, line_id: int) -> None:
             raise e
         
 
-def remove_user_line(supabase: Client, user_id: int, line_id: int) -> None:
+async def remove_user_line(supabase: AsyncClient, user_id: int, line_id: int) -> None:
     try:
-        supabase.table("subscriptions").delete().match({
+        await supabase.table("subscriptions").delete().match({
             "user_id": user_id,
             "line_id": line_id
         }).execute()

@@ -1,11 +1,31 @@
+from collections import defaultdict
+
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes
 
-from src.users import register_user, get_user_lines, get_available_lines, get_user_alerts, add_user_line, remove_user_line
+from src.users import (
+    register_user, get_user_lines, get_available_lines,
+    get_user_alerts, add_user_line, remove_user_line,
+    get_chat_ids
+)
+
+
+def get_alerts_msg(line_name: str, alerts: list[dict]) -> str:
+    alert_icon = {
+        "danger": "❌",
+        "warning": "⚠️",
+        "info": "ℹ️",
+        "success": "✅"
+    }
+    msg = f"🚆 <b>{line_name}</b>\n"
+    for alert in alerts:
+        msg += f"\n🛤️ <b>{alert['title']}</b>\n" if alert["title"] else "\n"
+        msg += f"{alert_icon.get(alert['type'], 'ℹ️')} {alert['description']}\n" if alert["description"] else ""
+    return msg
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    register_user(context.bot_data["supabase"],
+    await register_user(context.bot_data["supabase"],
                   update.effective_user.id,
                   update.effective_chat.id,
                   update.effective_user.username,
@@ -25,8 +45,8 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def send_lines(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_lines = get_user_lines(context.bot_data["supabase"],
-                                update.effective_user.id)
+    user_lines = await get_user_lines(context.bot_data["supabase"],
+                                      update.effective_user.id)
     msg = ("Tus líneas de trenes seleccionadas son:\n" +
            "\n".join([f"🚆 <b>{line['name']}</b>" for line in user_lines])
             if user_lines else "No tenés líneas seleccionadas.")
@@ -38,19 +58,10 @@ async def send_lines(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 
 
 async def send_alerts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_alerts_by_line = get_user_alerts(context.bot_data["supabase"],
-                                          update.effective_user.id)
-    alert_icon = {
-        "danger": "❌",
-        "warning": "⚠️",
-        "info": "ℹ️",
-        "success": "✅"
-    }
-    for line in user_alerts_by_line:
-        msg = f"🚆 <b>{line}</b>\n"
-        for alert in user_alerts_by_line[line]:
-            msg += f"\n🛤️ <b>{alert['title']}</b>\n" if alert["title"] else "\n"
-            msg += f"{alert_icon.get(alert['type'], 'ℹ️')} {alert['description']}\n" if alert["description"] else ""
+    user_alerts_by_line = await get_user_alerts(context.bot_data["supabase"],
+                                                update.effective_user.id)
+    for msg in [get_alerts_msg(line, alerts)
+                for line, alerts in user_alerts_by_line.items()]:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
             text=msg,
@@ -59,7 +70,8 @@ async def send_alerts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
 
 async def add_line(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    available_lines = get_available_lines(context.bot_data["supabase"], update.effective_user.id)
+    available_lines = await get_available_lines(context.bot_data["supabase"],
+                                                update.effective_user.id)
     if not available_lines:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
@@ -84,7 +96,8 @@ async def add_line(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
 
 async def remove_line(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    user_lines = get_user_lines(context.bot_data["supabase"], update.effective_user.id)
+    user_lines = await get_user_lines(context.bot_data["supabase"],
+                                      update.effective_user.id)
     if not user_lines:
         await context.bot.send_message(
             chat_id=update.effective_chat.id,
@@ -113,7 +126,7 @@ async def handle_add_line_callback(update: Update, context: ContextTypes.DEFAULT
     await query.answer()
     _, line_id, line_name = query.data.split(":", 2)
 
-    add_user_line(context.bot_data["supabase"], update.effective_user.id, line_id)
+    await add_user_line(context.bot_data["supabase"], update.effective_user.id, line_id)
     await query.edit_message_text(
         text=f"➕ <b>¡{line_name} agregada!</b>\n\nUsá /lines para ver todas tus líneas seleccionadas.",
         parse_mode="HTML"
@@ -125,8 +138,18 @@ async def handle_remove_line_callback(update: Update, context: ContextTypes.DEFA
     await query.answer()
     _, line_id, line_name = query.data.split(":", 2)
 
-    remove_user_line(context.bot_data["supabase"], update.effective_user.id, line_id)
+    await remove_user_line(context.bot_data["supabase"], update.effective_user.id, line_id)
     await query.edit_message_text(
         text=f"➖ <b>¡{line_name} eliminada!</b>\n\nUsá /lines para ver todas tus líneas seleccionadas.",
         parse_mode="HTML"
     )
+
+
+async def broadcast_alerts(context: ContextTypes.DEFAULT_TYPE,
+                           alerts_by_line: defaultdict[str, dict]) -> None:
+    for line_id in alerts_by_line:
+        msg = get_alerts_msg(alerts_by_line[line_id]["line_name"],
+                             alerts_by_line[line_id]["alerts"])
+        chat_ids = await get_chat_ids(context.bot_data["supabase"], line_id)
+        for chat_id in chat_ids:
+            await context.bot.send_message(chat_id, msg, parse_mode="HTML")
