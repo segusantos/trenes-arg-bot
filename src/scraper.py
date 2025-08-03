@@ -7,7 +7,7 @@ async def scrape_alerts(url: str) -> defaultdict[str, list[dict]]:
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
         response.raise_for_status()
-        return parse_alerts(BeautifulSoup(response.text, "html.parser"))
+    return parse_alerts(BeautifulSoup(response.text, "html.parser"))
 
 
 def parse_alerts(soup: BeautifulSoup) -> defaultdict[str, list[dict]]:

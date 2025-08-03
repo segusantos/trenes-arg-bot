@@ -9,13 +9,17 @@ async def register_user(supabase: AsyncClient,
                   first_name: str,
                   last_name: str) -> None:
     try:
-        await supabase.table("users").insert({
-            "id": user_id,
-            "chat_id": chat_id,
-            "username": username,
-            "first_name": first_name,
-            "last_name": last_name
-        }).execute()
+        await (
+            supabase.table("users")
+                    .insert({
+                        "id": user_id,
+                        "chat_id": chat_id,
+                        "username": username,
+                        "first_name": first_name,
+                        "last_name": last_name
+                    })
+                    .execute()
+        )
     except Exception as e:
         if "duplicate key value violates unique constraint" in str(e):
             logging.warning(f"User {user_id} already exists.")
@@ -82,10 +86,14 @@ async def get_user_alerts(supabase: AsyncClient, user_id: int) -> dict[str, list
 
 async def add_user_line(supabase: AsyncClient, user_id: int, line_id: int) -> None:
     try:
-        await supabase.table("subscriptions").insert({
-            "user_id": user_id,
-            "line_id": line_id
-        }).execute()
+        await (
+            supabase.table("subscriptions")
+                    .insert({
+                        "user_id": user_id,
+                        "line_id": line_id
+                    })
+                    .execute()
+        )
     except Exception as e:
         if "duplicate key value violates unique constraint" in str(e):
             logging.warning(f"User {user_id} already subscribed to line {line_id}.")
@@ -95,10 +103,15 @@ async def add_user_line(supabase: AsyncClient, user_id: int, line_id: int) -> No
 
 async def remove_user_line(supabase: AsyncClient, user_id: int, line_id: int) -> None:
     try:
-        await supabase.table("subscriptions").delete().match({
-            "user_id": user_id,
-            "line_id": line_id
-        }).execute()
+        await (
+            supabase.table("subscriptions")
+                    .delete()
+                    .match({
+                        "user_id": user_id,
+                        "line_id": line_id
+                    })
+                    .execute()
+        )
     except Exception as e:
         logging.error(f"Error removing user {user_id} from line {line_id}: {e}")
         raise e
