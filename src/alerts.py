@@ -16,7 +16,7 @@ async def get_lines_map(supabase: AsyncClient) -> dict[str, str]:
     }
 
 
-async def get_prev_alerts_keys(supabase: AsyncClient) -> set[tuple[int, str]]:
+async def get_prev_alerts_keys(supabase: AsyncClient) -> set[tuple[str, str]]:
     response = await (
         supabase.table("alerts")
                 .select("line_id, alert_hash")
@@ -28,7 +28,7 @@ async def get_prev_alerts_keys(supabase: AsyncClient) -> set[tuple[int, str]]:
     }
 
 
-def get_new_alerts(lines_map: dict[str, int],
+def get_new_alerts(lines_map: dict[str, str],
                    alerts_by_line: defaultdict[str, list[dict]]) -> dict[tuple[str, str], dict]:
     lines_map = {line_name: line_id for line_id, line_name in lines_map.items()}
     new_alerts = {}
@@ -86,8 +86,9 @@ async def update_alerts(supabase: AsyncClient,
     if alerts_keys_to_delete:
         await (
             supabase.table("alerts")
-                    .delete().or_(*[f"and(line_id.eq.{line_id}, alert_hash.eq.{alert_hash})"
-                        for (line_id, alert_hash) in alerts_keys_to_delete])
+                    .delete()
+                    .or_(",".join(f"and(line_id.eq.{line_id},alert_hash.eq.{alert_hash})"
+                                  for line_id, alert_hash in alerts_keys_to_delete))
                     .execute()
         )
 
