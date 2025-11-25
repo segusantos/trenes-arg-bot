@@ -44,10 +44,7 @@ def main() -> None:
     app.add_handler(CommandHandler("remove", remove_line))
     app.add_handler(CallbackQueryHandler(handle_add_line_callback, pattern="^add_line:"))
     app.add_handler(CallbackQueryHandler(handle_remove_line_callback, pattern="^remove_line:"))
-    app.bot_data["trenes_arg_url"] = (
-        "https://www.argentina.gob.ar/transporte/trenes-argentinos/"
-        "Modificaciones-en-el-servicio-y-novedades"
-    )
+    app.bot_data["trenes_arg_url"] = os.environ.get("TRENES_ARG_URL")
     app.bot_data["supabase"] = supabase
     app.job_queue.run_repeating(sync_alerts, interval=300, first=0)
     app.run_polling(stop_signals=())
