@@ -41,16 +41,20 @@ async def get_chat_ids(supabase: AsyncClient, line_id: int) -> list[int]:
 
 
 async def get_available_lines(supabase: AsyncClient, user_id: int) -> list[dict]:
-    response = await (
-        supabase.table("lines")
-                .select("id, name, subscriptions(user_id)")
-                .is_("subscriptions", None)
+    all_lines_resp = await supabase.table("lines").select("id, name").execute()
+    user_subs_resp = await (
+        supabase.table("subscriptions")
+                .select("line_id")
+                .eq("user_id", user_id)
                 .execute()
     )
+    subscribed_line_ids = {sub["line_id"] for sub in user_subs_resp.data}
     return [
         {"id": line["id"], "name": line["name"]}
-        for line in response.data
+        for line in all_lines_resp.data
+        if line["id"] not in subscribed_line_ids
     ]
+
 
 
 async def get_user_lines(supabase: AsyncClient, user_id: int) -> list[dict]:
