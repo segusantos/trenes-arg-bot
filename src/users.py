@@ -1,5 +1,7 @@
 import logging
+import asyncio
 from supabase import AsyncClient
+
 
 
 async def register_user(supabase: AsyncClient,
@@ -41,19 +43,21 @@ async def get_chat_ids(supabase: AsyncClient, line_id: int) -> list[int]:
 
 
 async def get_available_lines(supabase: AsyncClient, user_id: int) -> list[dict]:
-    all_lines_resp = await supabase.table("lines").select("id, name").execute()
-    user_subs_resp = await (
+    all_lines_task = supabase.table("lines").select("id, name").execute()
+    user_subs_task = (
         supabase.table("subscriptions")
                 .select("line_id")
                 .eq("user_id", user_id)
                 .execute()
     )
+    all_lines_resp, user_subs_resp = await asyncio.gather(all_lines_task, user_subs_task)
     subscribed_line_ids = {sub["line_id"] for sub in user_subs_resp.data}
     return [
         {"id": line["id"], "name": line["name"]}
         for line in all_lines_resp.data
         if line["id"] not in subscribed_line_ids
     ]
+
 
 
 
