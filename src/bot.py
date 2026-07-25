@@ -1,3 +1,4 @@
+import asyncio
 from collections import defaultdict
 
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
@@ -60,12 +61,12 @@ async def send_lines(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
 async def send_alerts(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user_alerts_by_line = await get_user_alerts(context.bot_data["supabase"],
                                                 update.effective_user.id)
-    for msg in [get_alerts_msg(line, alerts)
-                for line, alerts in user_alerts_by_line.items()]:
-        await context.bot.send_message(
-            chat_id=update.effective_chat.id,
-            text=msg,
-            parse_mode="HTML"
+    messages = [get_alerts_msg(line, alerts)
+                for line, alerts in user_alerts_by_line.items()]
+    if messages:
+        await asyncio.gather(
+            *[context.bot.send_message(chat_id=update.effective_chat.id, text=msg, parse_mode="HTML")
+              for msg in messages]
         )
 
 
@@ -147,9 +148,21 @@ async def handle_remove_line_callback(update: Update, context: ContextTypes.DEFA
 
 async def broadcast_alerts(context: ContextTypes.DEFAULT_TYPE,
                            alerts_by_line: defaultdict[str, dict]) -> None:
-    for line_id in alerts_by_line:
+    if not alerts_by_line:
+        return
+
+    line_ids = list(alerts_by_line.keys())
+    chat_ids_results = await asyncio.gather(
+        *[get_chat_ids(context.bot_data["supabase"], line_id) for line_id in line_ids]
+    )
+
+    send_tasks = []
+    for line_id, chat_ids in zip(line_ids, chat_ids_results):
         msg = get_alerts_msg(alerts_by_line[line_id]["line_name"],
                              alerts_by_line[line_id]["alerts"])
-        chat_ids = await get_chat_ids(context.bot_data["supabase"], line_id)
         for chat_id in chat_ids:
-            await context.bot.send_message(chat_id, msg, parse_mode="HTML")
+            send_tasks.append(context.bot.send_message(chat_id, msg, parse_mode="HTML"))
+
+    if send_tasks:
+        await asyncio.gather(*send_tasks, return_exceptions=True)
+

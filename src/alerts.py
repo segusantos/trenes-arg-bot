@@ -1,5 +1,6 @@
 import json
 import hashlib
+import asyncio
 from collections import defaultdict
 from supabase import AsyncClient
 
@@ -58,9 +59,11 @@ def get_alerts_to_broadcast(lines_map: dict[str, str],
 
 async def update_alerts(supabase: AsyncClient,
                         alerts_by_line: defaultdict[str, list[dict]]) -> defaultdict[str, list[dict]]:
-    prev_alerts_keys = await get_prev_alerts_keys(supabase)
+    prev_alerts_keys, lines_map = await asyncio.gather(
+        get_prev_alerts_keys(supabase),
+        get_lines_map(supabase)
+    )
 
-    lines_map = await get_lines_map(supabase)
     new_alerts = get_new_alerts(lines_map, alerts_by_line)
     new_alerts_keys = set(new_alerts.keys())
 
@@ -75,16 +78,19 @@ async def update_alerts(supabase: AsyncClient,
         }
         for (line_id, alert_hash) in alerts_keys_to_insert
     ]
+
+    alerts_keys_to_delete = prev_alerts_keys - new_alerts_keys
+
+    db_tasks = []
     if alerts_keys_to_insert:
-        await (
+        db_tasks.append(
             supabase.table("alerts")
                     .insert(alerts_to_insert)
                     .execute()
         )
 
-    alerts_keys_to_delete = prev_alerts_keys - new_alerts_keys
     if alerts_keys_to_delete:
-        await (
+        db_tasks.append(
             supabase.table("alerts")
                     .delete()
                     .or_(",".join(f"and(line_id.eq.{line_id},alert_hash.eq.{alert_hash})"
@@ -92,4 +98,8 @@ async def update_alerts(supabase: AsyncClient,
                     .execute()
         )
 
+    if db_tasks:
+        await asyncio.gather(*db_tasks)
+
     return get_alerts_to_broadcast(lines_map, new_alerts, alerts_keys_to_insert)
+
